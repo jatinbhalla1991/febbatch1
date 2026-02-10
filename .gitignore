@@ -1,6 +1,7 @@
 # Compiled class files
 *.class
-
+.terraform/
+*.tfstate
 # Log files
 *.log
 
