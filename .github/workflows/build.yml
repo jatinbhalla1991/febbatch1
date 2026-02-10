@@ -62,12 +62,12 @@ jobs:
         java-version: [11]
     
     steps:
-      - name: creation of folder1 and the file1.txt
+      - name: echo environment and java version
         run: echo "Deploying to ${{ inputs.environment }} environment with Java ${{ matrix.java-version }}"
 
   deploytouat:
     runs-on: ubuntu-latest
-    needs: build
+    needs: deploytodev
     name: Deploy to ${{ inputs.environment }} environment
     env:
       ENVIRONMENT: ${{ inputs.environment }}
@@ -76,12 +76,12 @@ jobs:
         java-version: [11]
     
     steps:
-      - name: creation of folder1 and the file1.txt
+      - name: echo environment and java version
         run: echo "Deploying to ${{ inputs.environment }} environment with Java ${{ matrix.java-version }}"
     
   deploytoprod:
     runs-on: ubuntu-latest
-    needs: build
+    needs: deploytouat
     name: Deploy to ${{ inputs.environment }} environment
     env:        
       ENVIRONMENT: ${{ inputs.environment }}
@@ -90,7 +90,7 @@ jobs:
         java-version: [11]
     
     steps:
-      - name: creation of folder1 and the file1.txt
+      - name: echo environment and java version
         run: echo "Deploying to ${{ inputs.environment }} environment with Java ${{ matrix.java-version }}"
 
   
