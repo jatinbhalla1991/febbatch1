@@ -49,19 +49,6 @@ jobs:
         name: calculator-jar-jdk-${{ matrix.java-version }}
         path: target/*.jar
         retention-days: 7
-    
-    # - name: Generate test report
-    #   if: always()
-    #   run: mvn surefire-report:report
-    
-    # - name: Publish test results
-    #   if: always()
-    #   uses: dorny/test-reporter@v1
-    #   with:
-    #     name: Maven Tests - JDK ${{ matrix.java-version }}
-    #     path: target/surefire-reports/*.xml
-    #     reporter: java-junit
-    #     fail-on-error: false
 
   print-environment:
     runs-on: ubuntu-latest
@@ -75,3 +62,16 @@ jobs:
         echo "🚀 Deployment Environment: ${{ inputs.environment }}"
         echo "=========================================="
         echo "Pipeline completed successfully for environment: ${{ inputs.environment }}"
+  
+  deploy:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        java-version: [11]
+    
+    steps:
+      - name: creation of folder1 and the file1.txt
+        run: echo "Deploying to ${{ inputs.environment }} environment with Java ${{ matrix.java-version }}"
+
+  
