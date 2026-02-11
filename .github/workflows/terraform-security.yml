@@ -1,0 +1,204 @@
+name: Terraform Security Scanning
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'terraform/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'terraform/**'
+  workflow_dispatch:
+
+env:
+  WORKING_DIR: './terraform'
+
+jobs:
+  tfsec-scan:
+    name: TFSec Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Run tfsec
+      uses: aquasecurity/tfsec-action@v1.0.3
+      with:
+        working_directory: ${{ env.WORKING_DIR }}
+        soft_fail: false
+        format: sarif
+        additional_args: --minimum-severity MEDIUM
+    
+    - name: Upload tfsec SARIF
+      if: always()
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: results.sarif
+
+  checkov-scan:
+    name: Checkov Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Run Checkov
+      uses: bridgecrewio/checkov-action@master
+      with:
+        directory: ${{ env.WORKING_DIR }}
+        framework: terraform
+        output_format: sarif
+        output_file_path: checkov-results.sarif
+        soft_fail: false
+        download_external_modules: true
+    
+    - name: Upload Checkov SARIF
+      if: always()
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: checkov-results.sarif
+
+  terrascan:
+    name: Terrascan Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Run Terrascan
+      uses: tenable/terrascan-action@main
+      with:
+        iac_type: 'terraform'
+        iac_dir: ${{ env.WORKING_DIR }}
+        policy_type: 'aws'
+        only_warn: false
+        sarif_upload: true
+    
+    - name: Upload Terrascan SARIF
+      if: always()
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: terrascan.sarif
+
+  tflint:
+    name: TFLint - Terraform Linter
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup TFLint
+      uses: terraform-linters/setup-tflint@v4
+      with:
+        tflint_version: latest
+    
+    - name: Initialize TFLint
+      run: tflint --init
+      working-directory: ${{ env.WORKING_DIR }}
+    
+    - name: Run TFLint
+      run: tflint --format compact --recursive
+      working-directory: ${{ env.WORKING_DIR }}
+
+  snyk-iac:
+    name: Snyk IaC Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Run Snyk to check Terraform files
+      uses: snyk/actions/iac@master
+      continue-on-error: true
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      with:
+        file: ${{ env.WORKING_DIR }}
+        args: --severity-threshold=medium
+    
+    - name: Upload Snyk results to GitHub Code Scanning
+      if: always()
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: snyk.sarif
+
+  terraform-validate:
+    name: Terraform Validate
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.6.0
+    
+    - name: Terraform Format Check
+      run: terraform fmt -check -recursive
+      working-directory: ${{ env.WORKING_DIR }}
+    
+    - name: Terraform Init
+      run: terraform init -backend=false
+      working-directory: ${{ env.WORKING_DIR }}
+    
+    - name: Terraform Validate
+      run: terraform validate
+      working-directory: ${{ env.WORKING_DIR }}
+
+  infracost:
+    name: Infracost - Cost Estimation
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Infracost
+      uses: infracost/actions/setup@v3
+      with:
+        api-key: ${{ secrets.INFRACOST_API_KEY }}
+    
+    - name: Generate Infracost cost estimate
+      run: |
+        infracost breakdown --path=${{ env.WORKING_DIR }} \
+          --format=json \
+          --out-file=/tmp/infracost.json
+    
+    - name: Post Infracost comment
+      if: github.event_name == 'pull_request'
+      run: |
+        infracost comment github --path=/tmp/infracost.json \
+          --repo=$GITHUB_REPOSITORY \
+          --github-token=${{ secrets.GITHUB_TOKEN }} \
+          --pull-request=${{ github.event.pull_request.number }} \
+          --behavior=update
+
+  summary:
+    name: Security Scan Summary
+    runs-on: ubuntu-latest
+    needs: [tfsec-scan, checkov-scan, terrascan, tflint, terraform-validate]
+    if: always()
+    
+    steps:
+    - name: Generate Summary
+      run: |
+        echo "## 🔒 Terraform Security Scan Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "✅ All security scans completed!" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Scans Performed:" >> $GITHUB_STEP_SUMMARY
+        echo "- TFSec: Security scanner for Terraform" >> $GITHUB_STEP_SUMMARY
+        echo "- Checkov: Policy-as-code scanner" >> $GITHUB_STEP_SUMMARY
+        echo "- Terrascan: Static code analyzer" >> $GITHUB_STEP_SUMMARY
+        echo "- TFLint: Terraform linter" >> $GITHUB_STEP_SUMMARY
+        echo "- Terraform Validate: Native validation" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "Check the Security tab for detailed results!" >> $GITHUB_STEP_SUMMARY
