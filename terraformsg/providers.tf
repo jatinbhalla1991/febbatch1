@@ -8,7 +8,7 @@ terraform {
   
   backend "s3" {
     bucket         = "my-terraform-state-1991"
-    key            = "terraform/state/terraform.tfstate"
+    key            = "terraform/state/sg.tfstate"
     region         = "us-east-1"
     encrypt        = true
     #ynamodb_table = "terraform-state-lock"

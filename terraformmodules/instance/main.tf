@@ -3,12 +3,9 @@
   count         = var.instance_count
   ami           = var.ami_id
   instance_type = var.instance_type
-  security_groups = [data.terraform_remote_state.other_project.outputs.aws_security_group]
 
   tags = {
     Name = "Instance-${count.index + 1}"
     Environment = "prod"
   }
 }
-
-
