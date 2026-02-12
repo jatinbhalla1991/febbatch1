@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  # Java Web Application
+  java-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: java-multistage-demo:latest
+    container_name: java-web-app
+    ports:
+      - "8080:8080"
+    environment:
+      - ENVIRONMENT=production
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-proxy
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - java-app
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # Redis Cache (optional - for demonstration)
+  redis:
+    image: redis:7-alpine
+    container_name: redis-cache
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+
+  # PostgreSQL Database (optional - for demonstration)
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres-db
+    environment:
+      - POSTGRES_USER=appuser
+      - POSTGRES_PASSWORD=apppassword
+      - POSTGRES_DB=appdb
+    ports:
+      - "5432:5432"
+    networks:
+      - app-network
+    restart: unless-stopped
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+  postgres-data:
