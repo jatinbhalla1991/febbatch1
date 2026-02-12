@@ -1,6 +1,7 @@
 ---
 - name: Demo of Custom Ansible Modules
-  hosts: localhost
+  hosts: webservers
+  become: yes
   gather_facts: yes
   
   tasks:
