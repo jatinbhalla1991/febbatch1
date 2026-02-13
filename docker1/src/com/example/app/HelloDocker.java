@@ -41,7 +41,7 @@ public class HelloDocker {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             String response = buildHtmlPage(
-                "Welcome to Multi-Stage Docker Demo!",
+                "Welcome to jatin home!",
                 "<h2>Java Application Running in Docker</h2>" +
                 "<p>This application demonstrates multi-stage Docker builds.</p>" +
                 "<h3>Available Endpoints:</h3>" +
